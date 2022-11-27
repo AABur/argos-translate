@@ -34,17 +34,19 @@ cache_dir = (
 )
 os.makedirs(cache_dir, exist_ok=True)
 
-if not dev_mode:
-    remote_repo = os.getenv(
-        "ARGOS_PACKAGE_INDEX",
-        default="https://raw.githubusercontent.com/argosopentech/argospm-index/main",
-    )
-else:
-    remote_repo = os.getenv(
+remote_repo = (
+    os.getenv(
         "ARGOS_PACKAGE_INDEX",
         default="https://raw.githubusercontent.com/argosopentech/argospm-index-dev/main",
     )
-remote_package_index = remote_repo + "/index.json"
+    if dev_mode
+    else os.getenv(
+        "ARGOS_PACKAGE_INDEX",
+        default="https://raw.githubusercontent.com/argosopentech/argospm-index/main",
+    )
+)
+
+remote_package_index = f"{remote_repo}/index.json"
 
 experimental_enabled = os.getenv("ARGOS_EXPERIMENTAL_ENABLED") in TRUE_VALUES
 
@@ -63,7 +65,7 @@ model_mapping = {
     "OPENAI": ModelProvider.OPENAI,
 }
 model_provider = os.getenv("ARGOS_MODEL_PROVIDER", "OPENNMT")
-assert model_provider in model_mapping.keys()
+assert model_provider in model_mapping
 model_provider = model_mapping[model_provider]
 
 libretranslate_api_key = os.getenv("LIBRETRANSLATE_API_KEY", None)

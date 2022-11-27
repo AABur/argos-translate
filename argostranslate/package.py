@@ -107,32 +107,34 @@ class IPackage:
         self.argos_version = metadata.get("argos_version", "")
         self.from_code = metadata.get("from_code")
         self.from_name = metadata.get("from_name", "")
-        self.from_codes = metadata.get("from_codes", list())
+        self.from_codes = metadata.get("from_codes", [])
         self.to_code = metadata.get("to_code")
-        self.to_codes = metadata.get("to_codes", list())
+        self.to_codes = metadata.get("to_codes", [])
         self.to_name = metadata.get("to_name", "")
-        self.links = metadata.get("links", list())
+        self.links = metadata.get("links", [])
         self.type = metadata.get("type", "translate")
-        self.languages = metadata.get("languages", list())
-        self.dependencies = metadata.get("dependencies", list())
-        self.source_languages = metadata.get("source_languages", list())
-        self.target_languages = metadata.get("target_languages", list())
+        self.languages = metadata.get("languages", [])
+        self.dependencies = metadata.get("dependencies", [])
+        self.source_languages = metadata.get("source_languages", [])
+        self.target_languages = metadata.get("target_languages", [])
 
         # Add all package source and target languages to
         # source_languages and target_languages
-        if self.from_code is not None or self.from_name is not None:
-            from_lang = dict()
-            if self.from_code is not None:
-                from_lang["code"] = self.from_code
+        if self.from_code is not None:
+            from_lang = {"code": self.from_code}
             if self.from_name is not None:
                 from_lang["name"] = self.from_name
             self.source_languages.append(from_lang)
-        if self.to_code is not None or self.to_name is not None:
-            to_lang = dict()
-            if self.to_code is not None:
-                to_lang["code"] = self.to_code
+        elif self.from_name is not None:
+            from_lang = {"name": self.from_name}
+            self.source_languages.append(from_lang)
+        if self.to_code is not None:
+            to_lang = {"code": self.to_code}
             if self.to_name is not None:
                 to_lang["name"] = self.to_name
+            self.source_languages.append(to_lang)
+        elif self.to_name is not None:
+            to_lang = {"name": self.to_name}
             self.source_languages.append(to_lang)
         self.source_languages += copy.deepcopy(self.languages)
         self.target_languages += copy.deepcopy(self.languages)
@@ -162,7 +164,7 @@ class IPackage:
 
     def __repr__(self):
         if len(self.from_name) > 0 and len(self.to_name) > 0:
-            return "{} -> {}".format(self.from_name, self.to_name)
+            return f"{self.from_name} -> {self.to_name}"
         elif self.type:
             return self.type
         return ""
@@ -188,8 +190,9 @@ class Package(IPackage):
         metadata_path = package_path / "metadata.json"
         if not metadata_path.exists():
             raise FileNotFoundError(
-                "Error opening package at " + str(metadata_path) + " no metadata.json"
+                f"Error opening package at {str(metadata_path)} no metadata.json"
             )
+
         with open(metadata_path) as metadata_file:
             metadata = json.load(metadata_file)
             self.load_metadata_from_json(metadata)
@@ -235,21 +238,23 @@ class AvailablePackage(IPackage):
 
     def download(self) -> Path:
         """Downloads the AvailablePackage and returns its path"""
-        filename = argospm_package_name(self) + ".argosmodel"
+        filename = f"{argospm_package_name(self)}.argosmodel"
 
         # Install sbd package if needed
-        if self.type == "translate" and not settings.stanza_available:
-            if (
-                len(list(filter(lambda x: x.type == "sbd", get_installed_packages())))
-                == 0
-            ):
-                # No sbd packages are installed, download all available
-                sbd_packages = filter(
-                    lambda x: x.type == "sbd", get_available_packages()
-                )
-                for sbd_package in sbd_packages:
-                    download_path = sbd_package.download()
-                    install_from_path(download_path)
+        if (
+            self.type == "translate"
+            and not settings.stanza_available
+            and not list(
+                filter(lambda x: x.type == "sbd", get_installed_packages())
+            )
+        ):
+            # No sbd packages are installed, download all available
+            sbd_packages = filter(
+                lambda x: x.type == "sbd", get_available_packages()
+            )
+            for sbd_package in sbd_packages:
+                download_path = sbd_package.download()
+                install_from_path(download_path)
 
         filepath = settings.downloads_dir / filename
         if not filepath.exists():
@@ -265,7 +270,7 @@ class AvailablePackage(IPackage):
         install_from_path(download_path)
 
     def get_description(self):
-        return "{} → {}".format(self.from_name, self.to_name)
+        return f"{self.from_name} → {self.to_name}"
 
 
 def uninstall(pkg: Package):
@@ -296,9 +301,10 @@ def get_installed_packages(path: Path = None) -> list[Package]:
         to_return = []
         packages_path = settings.package_dirs if path is None else path
         for directory in packages_path:
-            for path in directory.iterdir():
-                if path.is_dir():
-                    to_return.append(Package(path))
+            to_return.extend(
+                Package(path) for path in directory.iterdir() if path.is_dir()
+            )
+
         return to_return
 
 
@@ -360,7 +366,7 @@ def argospm_package_name(pkg: IPackage) -> str:
     """
     to_return = pkg.type
     if pkg.from_code and pkg.to_code:
-        to_return += "-" + pkg.from_code + "_" + pkg.to_code
+        to_return += f"-{pkg.from_code}_{pkg.to_code}"
     return to_return
 
 

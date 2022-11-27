@@ -100,7 +100,7 @@ class ITranslation:
         return "\n".join(paragraphs)
 
     def __repr__(self):
-        return str(self.from_lang) + " -> " + str(self.to_lang)
+        return f"{str(self.from_lang)} -> {str(self.to_lang)}"
 
     def __str__(self):
         return repr(self).replace("->", "→")
@@ -142,10 +142,9 @@ class Language:
                 else None.
 
         """
-        valid_translations = list(
+        if valid_translations := list(
             filter(lambda x: x.to_lang.code == to.code, self.translations_from)
-        )
-        if len(valid_translations) > 0:
+        ):
             return valid_translations[0]
         return None
 
@@ -165,17 +164,17 @@ class PackageTranslation(ITranslation):
             self.translator = ctranslate2.Translator(model_path, device=settings.device)
         paragraphs = ITranslation.split_into_paragraphs(input_text)
         info("paragraphs:", paragraphs)
-        translated_paragraphs = []
-        for paragraph in paragraphs:
-            translated_paragraphs.append(
-                apply_packaged_translation(
-                    self.pkg, paragraph, self.translator, num_hypotheses
-                )
+        translated_paragraphs = [
+            apply_packaged_translation(
+                self.pkg, paragraph, self.translator, num_hypotheses
             )
+            for paragraph in paragraphs
+        ]
+
         info("translated_paragraphs:", translated_paragraphs)
 
         # Construct new hypotheses using all paragraphs
-        hypotheses_to_return = [Hypothesis("", 0) for i in range(num_hypotheses)]
+        hypotheses_to_return = [Hypothesis("", 0) for _ in range(num_hypotheses)]
         for i in range(num_hypotheses):
             for translated_paragraph in translated_paragraphs:
                 value = ITranslation.combine_paragraphs(
@@ -203,7 +202,7 @@ class IdentityTranslation(ITranslation):
         self.to_lang = lang
 
     def hypotheses(self, input_text: str, num_hypotheses: int = 4):
-        return [Hypothesis(input_text, 0) for i in range(num_hypotheses)]
+        return [Hypothesis(input_text, 0) for _ in range(num_hypotheses)]
 
 
 class CompositeTranslation(ITranslation):
@@ -240,14 +239,15 @@ class CompositeTranslation(ITranslation):
         to_return = []
         for t1_hypothesis in t1_hypotheses:
             t2_hypotheses = self.t2.hypotheses(t1_hypothesis.value, num_hypotheses)
-            for t2_hypothesis in t2_hypotheses:
-                to_return.append(
-                    Hypothesis(
-                        t2_hypothesis.value, t1_hypothesis.score + t2_hypothesis.score
-                    )
+            to_return.extend(
+                Hypothesis(
+                    t2_hypothesis.value, t1_hypothesis.score + t2_hypothesis.score
                 )
+                for t2_hypothesis in t2_hypotheses
+            )
+
         to_return.sort()
-        return to_return[0:num_hypotheses]
+        return to_return[:num_hypotheses]
 
 
 class CachedTranslation(ITranslation):
@@ -277,10 +277,10 @@ class CachedTranslation(ITranslation):
         self.underlying = underlying
         self.from_lang = underlying.from_lang
         self.to_lang = underlying.to_lang
-        self.cache = dict()
+        self.cache = {}
 
     def hypotheses(self, input_text: str, num_hypotheses: int = 4) -> list[Hypothesis]:
-        new_cache = dict()  # 'text': ['t1'...('tN')]
+        new_cache = {}
         paragraphs = ITranslation.split_into_paragraphs(input_text)
         translated_paragraphs = []
         for paragraph in paragraphs:
@@ -299,15 +299,14 @@ class CachedTranslation(ITranslation):
         self.cache = new_cache
 
         # Construct hypotheses
-        hypotheses_to_return = [Hypothesis("", 0) for i in range(num_hypotheses)]
+        hypotheses_to_return = [Hypothesis("", 0) for _ in range(num_hypotheses)]
         for i in range(num_hypotheses):
-            for j in range(len(translated_paragraphs)):
+            for translated_paragraph_ in translated_paragraphs:
                 value = ITranslation.combine_paragraphs(
-                    [hypotheses_to_return[i].value, translated_paragraphs[j][i].value]
+                    [hypotheses_to_return[i].value, translated_paragraph_[i].value]
                 )
-                score = (
-                    hypotheses_to_return[i].score + translated_paragraphs[j][i].score
-                )
+
+                score = hypotheses_to_return[i].score + translated_paragraph_[i].score
                 hypotheses_to_return[i] = Hypothesis(value, score)
             hypotheses_to_return[i].value = hypotheses_to_return[i].value.lstrip("\n")
         return hypotheses_to_return
@@ -478,7 +477,7 @@ def apply_packaged_translation(
         detokenized = "".join(translated_tokens)
         detokenized = detokenized.replace("▁", " ")
         value = detokenized
-        if len(value) > 0 and value[0] == " ":
+        if value != "" and value[0] == " ":
             # Remove space at the beginning of the translation added
             # by the tokenizer.
             value = value[1:]
@@ -510,7 +509,7 @@ def get_installed_languages() -> list[Language]:
         packages = list(filter(lambda x: x.type == "translate", packages))
 
         # Load languages and translations from packages
-        language_of_code = dict()
+        language_of_code = {}
         for pkg in packages:
             if pkg.from_code not in language_of_code:
                 language_of_code[pkg.from_code] = Language(pkg.from_code, pkg.from_name)
@@ -577,15 +576,12 @@ def get_installed_languages() -> list[Language]:
                 from_lang.translations_from.append(translation)
                 to_lang.translations_to.append(translation)
 
-    # Put English first if available so it shows up as the from language in the gui
-    en_index = None
-    for i, language in enumerate(languages):
-        if language.code == "en":
-            en_index = i
-            break
-    english = None
-    if en_index is not None:
-        english = languages.pop(en_index)
+    en_index = next(
+        (i for i, language in enumerate(languages) if language.code == "en"),
+        None,
+    )
+
+    english = languages.pop(en_index) if en_index is not None else None
     languages.sort(key=lambda x: x.name)
     if english is not None:
         languages = [english] + languages

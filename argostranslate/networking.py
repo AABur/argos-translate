@@ -19,9 +19,7 @@ def get_protocol(url: str) -> str | None:
         The string representation of the protocol or None
     """
     protocol_end_index = url.find(":")
-    if protocol_end_index > 0:
-        return url[:protocol_end_index]
-    return None
+    return url[:protocol_end_index] if protocol_end_index > 0 else None
 
 
 supported_protocols = {"http", "https"}

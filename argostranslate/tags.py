@@ -64,9 +64,7 @@ def depth(tag: ITag | str) -> int:
     """
     if type(tag) is str:
         return 0
-    if len(tag.children) == 0:
-        return 0
-    return max([depth(t) for t in tag.children])
+    return 0 if len(tag.children) == 0 else max(depth(t) for t in tag.children)
 
 
 def translate_preserve_formatting(
@@ -80,15 +78,15 @@ def translate_preserve_formatting(
         The translated text
     """
     translated_text = underlying_translation.translate(input_text)
-    if len(input_text) > 0:
+    if input_text != "":
         if input_text[0] == " " and not (
             len(translated_text) > 0 and translated_text[0] == " "
         ):
-            translated_text = " " + translated_text
+            translated_text = f" {translated_text}"
         if input_text[-1] == " " and not (
             len(translated_text) > 0 and translated_text[-1] == " "
         ):
-            translated_text = translated_text + " "
+            translated_text = f"{translated_text} "
     return translated_text
 
 

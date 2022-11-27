@@ -65,11 +65,11 @@ class TestPackage:
     def test_get_readme(self):
         with pytest.raises(FileNotFoundError):
             package_one = package.Package("example/")
-            assert package_one.get_readme() == None
+            assert package_one.get_readme() is None
 
         with pytest.raises(FileNotFoundError):
             package_one = package.Package("path/to/nowhere")
-            assert package_one.get_readme() == None
+            assert package_one.get_readme() is None
 
         assert self.package.get_readme() == self.readme
 
