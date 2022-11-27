@@ -47,7 +47,7 @@ class LibreTranslateAPI:
         Returns: The translated text
         """
 
-        url = self.url + "translate"
+        url = f"{self.url}translate"
 
         params = {"q": q, "source": source, "target": target}
 
@@ -70,9 +70,9 @@ class LibreTranslateAPI:
         Returns: A list of available languages ex. [{"code":"en", "name":"English"}]
         """
 
-        url = self.url + "languages"
+        url = f"{self.url}languages"
 
-        params = dict()
+        params = {}
 
         if self.api_key is not None:
             params["api_key"] = self.api_key
@@ -96,7 +96,7 @@ class LibreTranslateAPI:
         Returns: The detected languages ex. [{"confidence": 0.6, "language": "en"}]
         """
 
-        url = self.url + "detect"
+        url = f"{self.url}detect"
 
         params = {"q": q}
 
@@ -144,8 +144,9 @@ class OpenAIAPI(ILanguageModel):
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": "Bearer " + self.api_key,
+            "Authorization": f"Bearer {self.api_key}",
         }
+
 
         encoded_params = json.dumps(params).encode()
 

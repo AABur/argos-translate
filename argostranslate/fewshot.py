@@ -27,12 +27,12 @@ def generate_prompt(
     if from_name:
         to_return += from_name
     if from_code:
-        to_return += " (" + from_code + ")"
+        to_return += f" ({from_code})"
     to_return += "\nFrom "
     if to_name:
         to_return += to_name
     if from_code:
-        to_return += " (" + to_code + ")"
+        to_return += f" ({to_code})"
     to_return += "\n" + "=" * 10 + "\n"
     to_return += text
     to_return += "\n" + "-" * 10 + "\n"
@@ -44,6 +44,4 @@ def parse_inference(output: str) -> str:
     if end_index != -1:
         return output[end_index]
     end_index = output.find("-" * 10)
-    if end_index != -1:
-        return output[end_index]
-    return output
+    return output[end_index] if end_index != -1 else output

@@ -24,17 +24,14 @@ FEWSHOT_BOUNDARY_TOKEN = "-" * 10
 
 def get_sbd_package() -> Package | None:
     packages = package.get_installed_packages()
-    for pkg in packages:
-        if pkg.type == "sbd":
-            return pkg
-    return None
+    return next((pkg for pkg in packages if pkg.type == "sbd"), None)
 
 
 def generate_fewshot_sbd_prompt(
     input_text: str, sentence_guess_length: int = 150
 ) -> str:
     sentence_guess = input_text[:sentence_guess_length]
-    to_return = fewshot_prompt + "<detect-sentence-boundaries> " + sentence_guess
+    to_return = f"{fewshot_prompt}<detect-sentence-boundaries> {sentence_guess}"
     info("generate_fewshot_sbd_prompt", to_return)
     return to_return
 
@@ -45,29 +42,26 @@ def parse_fewshot_response(response_text: str) -> str | None:
     if len(response) < 2:
         return None
     response = response[-2].split("\n")
-    if len(response) < 2:
-        return None
-    return response[-1]
+    return None if len(response) < 2 else response[-1]
 
 
 def process_seq2seq_sbd(input_text: str, sbd_translated_guess: str) -> int:
     sbd_translated_guess_index = sbd_translated_guess.find(SENTENCE_BOUNDARY_TOKEN)
-    if sbd_translated_guess_index != -1:
-        sbd_translated_guess = sbd_translated_guess[:sbd_translated_guess_index]
-        info("sbd_translated_guess:", sbd_translated_guess)
-        best_index = None
-        best_ratio = 0.0
-        for i in range(len(input_text)):
-            candidate_sentence = input_text[:i]
-            sm = SequenceMatcher()
-            sm.set_seqs(candidate_sentence, sbd_translated_guess)
-            ratio = sm.ratio()
-            if best_index is None or ratio > best_ratio:
-                best_index = i
-                best_ratio = ratio
-        return best_index
-    else:
+    if sbd_translated_guess_index == -1:
         return -1
+    sbd_translated_guess = sbd_translated_guess[:sbd_translated_guess_index]
+    info("sbd_translated_guess:", sbd_translated_guess)
+    best_index = None
+    best_ratio = 0.0
+    for i in range(len(input_text)):
+        candidate_sentence = input_text[:i]
+        sm = SequenceMatcher()
+        sm.set_seqs(candidate_sentence, sbd_translated_guess)
+        ratio = sm.ratio()
+        if best_index is None or ratio > best_ratio:
+            best_index = i
+            best_ratio = ratio
+    return best_index
 
 
 def detect_sentence(

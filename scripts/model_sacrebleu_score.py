@@ -34,7 +34,7 @@ def main():
     sacrebleu.download_test_set(test_set, lang_pair)
     source_file_path = Path(sacrebleu.get_source_file(test_set, lang_pair))
 
-    output_file_path = test_set + '.output.' + lang_pair
+    output_file_path = f'{test_set}.output.{lang_pair}'
     output_file = open(output_file_path, "a+", encoding="utf-8")
 
     with open(source_file_path, "r") as source:
@@ -44,13 +44,14 @@ def main():
 
         for i, line in enumerate(source_lines):
             translated = translate(line, from_lang, to_lang)
-            print('Translated ' + str(i) + ' lines of ' + str(source_lines_length) + ' lines')
+            print(f'Translated {str(i)} lines of {source_lines_length} lines')
 
             output_file.write(translated.strip() + "\n")
             output_file.flush()
 
     os.system(
-        "sacrebleu -i " + output_file_path + " -t " + test_set + " -l " + lang_pair + ' >> ' + lang_pair + '.sacrebleu-score.json')
+        f"sacrebleu -i {output_file_path} -t {test_set} -l {lang_pair} >> {lang_pair}.sacrebleu-score.json"
+    )
 
 
 main()
